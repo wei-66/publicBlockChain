@@ -1,6 +1,7 @@
 package pow
 
 import (
+	"btcionshow/transaction"
 	"btcionshow/utils"
 	"bytes"
 	"math/big"
@@ -27,7 +28,7 @@ type ProofOfWork struct {
 type BlockeInterface interface {
 	GetTimeStamp() int64
 	GetPrevHash() []byte
-	GetData() []byte
+	GetTxs() []transaction.Transaction
 }
 
 /**
@@ -48,10 +49,10 @@ func NewPow(block BlockeInterface) *ProofOfWork {
 	return &pow
 }
 //用来寻找随机数
-func (pow *ProofOfWork)Run()([]byte,int64){
+func (pow *ProofOfWork)Run() ([]byte, int64) {
 	var nonce int64 //随机数
 	nonce = 0
-	//block := pow.Block
+//	block := pow.Block
 	//block.Nonce = nonce
 	timeBytes:=[]byte(strconv.FormatInt(pow.Block.GetTimeStamp(),10))
 	num:=big.NewInt(0)
@@ -59,14 +60,22 @@ func (pow *ProofOfWork)Run()([]byte,int64){
 	//转型  []byte转成大整数
 	for{
 		nonceBytes:=[]byte(strconv.FormatInt(nonce,10))
-		hashByets:=bytes.Join([][]byte{pow.Block.GetData(),pow.Block.GetPrevHash(),timeBytes,nonceBytes},[]byte{})
+		txsBytes := []byte{}
+		for _,v := range pow.Block.GetTxs(){
+			txBytes, err := v.Serialize()
+			if err != nil{
+				return nil, 0
+			}
+			txsBytes = append(txsBytes,txBytes...)
+		}
+		hashByets:=bytes.Join([][]byte{txsBytes,pow.Block.GetPrevHash(),timeBytes,nonceBytes},[]byte{})
 		hash:=utils.GetHash(hashByets)//当前区块的hash值
 		//fmt.Println("正在寻找nonce,当前的nonce为",nonce)
 		num = num.SetBytes(hash)//用来转换成大整数的
 		if(num.Cmp(pow.Target)==-1 ){
-			return hash,nonce
+			return hash, nonce
 		}
 		nonce++
 	}
-	return nil,0
+	return nil, 0
 }

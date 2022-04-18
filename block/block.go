@@ -2,6 +2,7 @@ package block
 
 import (
 	pow2 "btcionshow/pow"
+	"btcionshow/transaction"
 	"btcionshow/utils"
 	"bytes"
 	"encoding/gob"
@@ -17,7 +18,8 @@ import (
 type Block struct {
 	PrevHash  []byte //上一个区块hash
 	TimeStamp int64  //时间戳
-	Data      []byte //数据
+	//Data      []byte //数据
+	Txs   []transaction.Transaction
 	Nonce     int64  //随机数
 	Hash      []byte //hash值
 }
@@ -27,35 +29,43 @@ func (block *Block)GetTimeStamp()int64{
 func (block *Block)GetPrevHash()[]byte{
 	return block.PrevHash
 }
-func (block *Block)GetData()[]byte{
-	return block.Data
+func (block *Block)GetTxs()[]transaction.Transaction{
+	return block.Txs
 }
 /*
 1.获取当前区块的哈希值
 2.由上一个区块hash值，数据data，和时间戳拼接 再加上随机数
 */
-func (block *Block)getBlockHash()[]byte{
-	//将int类型转为string类型
-	time := []byte( strconv.FormatInt(block.TimeStamp, 10))
-	random := []byte( strconv.FormatInt(block.Nonce, 10))
-	//拼接字符串 第一个参数要拼接的内容，第二个是以什么形式拼接
-	hash := bytes.Join([][]byte{block.PrevHash, block.Data, time,random}, []byte{})
-	return utils.GetHash(hash)
-}
-//func (block *Block) SetHash() []byte {
-//	//区块的hash ：时间戳+上一个区块的hash值+交易信息+随机数
-//
-//	time := []byte(strconv.FormatInt(block.TimeStamp, 10))
-//	nonce := []byte(strconv.FormatInt(block.Nonce, 10))
-//	hash := bytes.Join([][]byte{block.PrevHash, block.Data, time, nonce}, []byte{})
+//func (block *Block)getBlockHash()[]byte{
+//	//将int类型转为string类型
+//	time := []byte( strconv.FormatInt(block.TimeStamp, 10))
+//	random := []byte( strconv.FormatInt(block.Nonce, 10))
+//	//拼接字符串 第一个参数要拼接的内容，第二个是以什么形式拼接
+//	hash := bytes.Join([][]byte{block.PrevHash, block.Data, time,random}, []byte{})
 //	return utils.GetHash(hash)
 //}
+func (block *Block) SetHash() ([]byte, error) {
+	//区块的hash ：时间戳+上一个区块的hash值+交易信息+随机数
+
+	time := []byte(strconv.FormatInt(block.TimeStamp, 10))
+	nonce := []byte(strconv.FormatInt(block.Nonce, 10))
+	txsBytes := []byte{}
+	for _,v := range block.Txs{
+		txBytes, err := v.Serialize()
+		if err != nil{
+			return nil ,err
+		}
+		txsBytes = append(txsBytes,txBytes...)
+	}
+	hash := bytes.Join([][]byte{block.PrevHash, txsBytes, time, nonce}, []byte{})
+	return utils.GetHash(hash), nil
+}
 //创建新的区块
-func NewBlock(prevHash []byte, data []byte) *Block {
+func NewBlock(prevHash []byte, txs []transaction.Transaction) *Block {
 	block := Block{
 		PrevHash:  prevHash,
 		TimeStamp: time.Now().Unix(),
-		Data:      data,
+		Txs:      txs,
 	}
 	pow := pow2.NewPow(&block)
 	hash, nonce := pow.Run()
@@ -95,8 +105,8 @@ func DeSerialize(data []byte) (*Block, error) {
 
 
 //创世区块
-func GenesisBlock(data []byte) *Block {
-	return NewBlock(nil, data)
+func GenesisBlock(txs transaction.Transaction) *Block {
+	return NewBlock(nil, []transaction.Transaction{txs})
 }
 
 

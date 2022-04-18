@@ -49,14 +49,14 @@ func (cl *Cli) Run() {
 }
 func (cl *Cli) CreateChain(){
 	createchain := flag.NewFlagSet("createchain", flag.ExitOnError)
-	data := createchain.String("data","","创世区块的交易信息")
+	address := createchain.String("address","","账户名称")
 	createchain.Parse(os.Args[2:])
 
 	if utils.FileExist("./chain.db") {
 		fmt.Println("文件已经存在")
 		return
 	}
-	bc, err := block.NewChain([]byte(*data))
+	bc, err := block.NewChain(*address)
 	defer bc.DB.Close()
 	if err != nil{
 		fmt.Println(err.Error())

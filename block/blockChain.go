@@ -1,6 +1,7 @@
 package block
 
 import (
+	"btcionshow/transaction"
 	"fmt"
 	"github.com/boltdb/bolt"
 	"golang.org/x/tools/go/ssa/interp/testdata/src/errors"
@@ -23,7 +24,7 @@ type BlockChain struct {
 	LastHash []byte
 }
 //创建区块链
-func NewChain(data []byte)(*BlockChain,error){
+func NewChain(address string)(*BlockChain,error){
 	//打开数据库
 	db, err := bolt.Open(CHAIN_DB_PATH, 0600, nil)
 	if err !=nil{
@@ -36,7 +37,8 @@ func NewChain(data []byte)(*BlockChain,error){
 		//1.有桶
 		bk := tx.Bucket([]byte(BUCKET_BLOCK))
 		if bk == nil{
-			genesis := GenesisBlock(data)
+			coinbase, err:= transaction.NewCoinbase(address)
+			genesis := GenesisBlock(*coinbase)
 			bk, err := tx.CreateBucket([]byte(BUCKET_BLOCK))
 			if err !=nil{
 				return err
